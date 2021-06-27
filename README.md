@@ -1,6 +1,7 @@
 # zig-bitjuggle
 
 [![CI](https://github.com/leecannon/zig-bitjuggle/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/leecannon/zig-bitjuggle/actions/workflows/main.yml)
+[![Publish](https://github.com/leecannon/zig-bitjuggle/actions/workflows/publish.yml/badge.svg?branch=master)](https://github.com/leecannon/zig-bitjuggle/actions/workflows/publish.yml)
 
 This package contains various "bit juggling" helpers and functionality:
  - `isBitSet` - Check if a bit is set
