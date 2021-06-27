@@ -10,3 +10,5 @@ pkgs:
     files:
       README.md
       LICENSE
+      build.zig
+      bitjuggle.zig
