@@ -1,0 +1,12 @@
+pkgs:
+  bitjuggle:
+    version: 0.1.0
+    description: "Various bit juggling helpers and functionality"
+    license: MIT
+    source_url: "https://github.com/leecannon/zig-bitjuggle"
+    tags:
+
+    root: bitjuggle.zig
+    files:
+      README.md
+      LICENSE
