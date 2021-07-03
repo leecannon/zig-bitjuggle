@@ -66,22 +66,24 @@ test "getBit" {
     try testing.expectEqual(@as(u1, 1), getBit(c, 1));
 }
 
-/// Obtains the range of bits starting at `start_bit` upto and excluding `end_bit`
-/// Where `start_bit` is of a lower significant bit than `end_bit`
+/// Obtains the `number_of_bits` bits starting at `start_bit`
+/// Where `start_bit` is the lowest significant bit to fetch
 ///
 /// ```zig
 /// const a: u8 = 0b01101100;
-/// const b = getBits(a, 2, 6);
+/// const b = getBits(a, 2, 4);
 /// try testing.expectEqual(@as(u8,0b00001011), b);
 /// ```
-pub fn getBits(target: anytype, comptime start_bit: comptime_int, comptime end_bit: comptime_int) @TypeOf(target) {
+pub fn getBits(target: anytype, comptime start_bit: comptime_int, comptime number_of_bits: comptime_int) @TypeOf(target) {
     const target_type = @TypeOf(target);
 
+    const end_bit = start_bit + number_of_bits;
+
     comptime {
+        if (number_of_bits == 0) @compileError("non-zero number_of_bits must be provided");
         if (@typeInfo(target_type) != .Int and @typeInfo(target_type) != .ComptimeInt) @compileError("not an integer");
-        if (end_bit <= start_bit) @compileError("length must be greater than zero");
         if (start_bit >= @bitSizeOf(target_type)) @compileError("start_bit index is out of bounds of the bit field");
-        if (end_bit > @bitSizeOf(target_type)) @compileError("end_bit is out of bounds of the bit field");
+        if (end_bit > @bitSizeOf(target_type)) @compileError("start_bit + number_of_bits is out of bounds of the bit field");
     }
 
     // shift away high bits
@@ -93,7 +95,7 @@ pub fn getBits(target: anytype, comptime start_bit: comptime_int, comptime end_b
 
 test "getBits" {
     const a: u8 = 0b01101100;
-    const b = getBits(a, 2, 6);
+    const b = getBits(a, 2, 4);
     try testing.expectEqual(@as(u8, 0b00001011), b);
 }
 
@@ -135,47 +137,48 @@ test "setBit" {
     try testing.expect(!isBitSet(val, 0));
 }
 
-/// Sets the range of bits starting at `start_bit` upto and excluding `end_bit`; to be
-/// specific, if the range is N bits long, the N lower bits of `value` will be used; if any of
+/// Sets the range of bits starting at `start_bit` upto and excluding `start_bit` + `number_of_bits`
+/// to be specific, if the range is N bits long, the N lower bits of `value` will be used; if any of
 /// the other bits in `value` are set to 1, this function will panic.
 ///
 /// ```zig
 /// var val: u8 = 0b10000000;
-/// setBits(&val, 2, 6, 0b00001101);
-///try testing.expectEqual(@as(u8, 0b10110100), val);
+/// setBits(&val, 2, 4, 0b00001101);
+/// try testing.expectEqual(@as(u8, 0b10110100), val);
 /// ```
 ///
 /// ## Panics
 /// This method will panic if the `value` exceeds the bit range of the type of `target`
-pub fn setBits(target: anytype, comptime start_bit: comptime_int, comptime end_bit: comptime_int, value: anytype) void {
+pub fn setBits(target: anytype, comptime start_bit: comptime_int, comptime number_of_bits: comptime_int, value: anytype) void {
     const ptr_type_info: std.builtin.TypeInfo = @typeInfo(@TypeOf(target));
     comptime {
         if (ptr_type_info != .Pointer) @compileError("not a pointer");
     }
 
-    const targetType = ptr_type_info.Pointer.child;
+    const target_type = ptr_type_info.Pointer.child;
+    const end_bit = start_bit + number_of_bits;
 
     comptime {
-        if (@typeInfo(targetType) != .Int and @typeInfo(targetType) != .ComptimeInt) @compileError("not an integer");
-        if (end_bit <= start_bit) @compileError("length must be greater than zero");
-        if (start_bit >= @bitSizeOf(targetType)) @compileError("start_bit index is out of bounds of the bit field");
-        if (end_bit > @bitSizeOf(targetType)) @compileError("start_bit plus length is out of bounds of the bit field");
+        if (@typeInfo(target_type) != .Int and @typeInfo(target_type) != .ComptimeInt) @compileError("not an integer");
+        if (number_of_bits == 0) @compileError("non-zero number_of_bits must be provided");
+        if (start_bit >= @bitSizeOf(target_type)) @compileError("start_bit index is out of bounds of the bit field");
+        if (end_bit > @bitSizeOf(target_type)) @compileError("start_bit + number_of_bits is out of bounds of the bit field");
     }
 
-    const peer_value = @as(targetType, value);
+    const peer_value = @as(target_type, value);
 
     if (getBits(peer_value, 0, (end_bit - start_bit)) != peer_value) {
         @panic("value exceeds bit range");
     }
 
-    const bitmask: targetType = comptime ~(~@as(targetType, 0) << (@bitSizeOf(targetType) - end_bit) >> (@bitSizeOf(targetType) - end_bit) >> start_bit << start_bit);
+    const bitmask: target_type = comptime ~(~@as(target_type, 0) << (@bitSizeOf(target_type) - end_bit) >> (@bitSizeOf(target_type) - end_bit) >> start_bit << start_bit);
 
     target.* = (target.* & bitmask) | (peer_value << start_bit);
 }
 
 test "setBits" {
     var val: u8 = 0b10000000;
-    setBits(&val, 2, 6, 0b00001101);
+    setBits(&val, 2, 4, 0b00001101);
     try testing.expectEqual(@as(u8, 0b10110100), val);
 }
 
