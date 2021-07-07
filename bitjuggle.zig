@@ -12,12 +12,28 @@ const testing = std.testing;
 /// try testing.expect(isBitSet(a, 1));
 /// ```
 pub fn isBitSet(target: anytype, comptime bit: comptime_int) bool {
-    const target_type = @TypeOf(target);
+    const TargetType = @TypeOf(target);
+
+    const MaskType = std.meta.Int(.unsigned, bit + 1);
+
+    const mask: MaskType = comptime blk: {
+        var temp: MaskType = std.math.maxInt(MaskType);
+        temp <<= bit;
+        break :blk temp;
+    };
+
     comptime {
-        if (@typeInfo(target_type) != .Int and @typeInfo(target_type) != .ComptimeInt) @compileError("not an integer");
-        if (bit >= @bitSizeOf(target_type)) @compileError("bit index is out of bounds of the bit field");
+        if (@typeInfo(TargetType) == .Int) {
+            if (@typeInfo(TargetType).Int.signedness != .unsigned) @compileError("requires an unsigned integer, found " ++ @typeName(TargetType));
+            if (bit >= @bitSizeOf(TargetType)) @compileError("bit index is out of bounds of the bit field");
+        } else if (@typeInfo(TargetType) == .ComptimeInt) {
+            if (target < 0) @compileError("requires an unsigned integer, found " ++ @typeName(TargetType));
+        } else {
+            @compileError("requires an unsigned integer, found " ++ @typeName(TargetType));
+        }
     }
-    return target & (@as(target_type, 1) << bit) != 0;
+
+    return @truncate(MaskType, target) & mask != 0;
 }
 
 test "isBitSet" {
@@ -34,6 +50,20 @@ test "isBitSet" {
     try testing.expect(isBitSet(c, 1));
 }
 
+test "isBitSet - comptime_int" {
+    const a = 0b00000000;
+    try testing.expect(!isBitSet(a, 0));
+    try testing.expect(!isBitSet(a, 1));
+
+    const b = 0b11111111;
+    try testing.expect(isBitSet(b, 0));
+    try testing.expect(isBitSet(b, 1));
+
+    const c = 0b00000010;
+    try testing.expect(!isBitSet(c, 0));
+    try testing.expect(isBitSet(c, 1));
+}
+
 /// Get the value of the bit at index `bit`.
 /// Note: that index 0 is the least significant bit, while index `length() - 1` is the most significant bit.
 ///
@@ -44,12 +74,7 @@ test "isBitSet" {
 /// try testing.expect(getBit(a, 1) == 1);
 /// ```
 pub fn getBit(target: anytype, comptime bit: comptime_int) u1 {
-    const target_type = @TypeOf(target);
-    comptime {
-        if (@typeInfo(target_type) != .Int and @typeInfo(target_type) != .ComptimeInt) @compileError("not an integer");
-        if (bit >= @bitSizeOf(target_type)) @compileError("bit index is out of bounds of the bit field");
-    }
-    return @truncate(u1, (target & (@as(target_type, 1) << bit)) >> bit);
+    return @boolToInt(isBitSet(target, bit));
 }
 
 test "getBit" {
@@ -66,37 +91,67 @@ test "getBit" {
     try testing.expectEqual(@as(u1, 1), getBit(c, 1));
 }
 
+test "getBit - comptime_int" {
+    const a = 0b00000000;
+    try testing.expectEqual(@as(u1, 0), getBit(a, 0));
+    try testing.expectEqual(@as(u1, 0), getBit(a, 1));
+
+    const b = 0b11111111;
+    try testing.expectEqual(@as(u1, 1), getBit(b, 0));
+    try testing.expectEqual(@as(u1, 1), getBit(b, 1));
+
+    const c = 0b00000010;
+    try testing.expectEqual(@as(u1, 0), getBit(c, 0));
+    try testing.expectEqual(@as(u1, 1), getBit(c, 1));
+}
+
 /// Obtains the `number_of_bits` bits starting at `start_bit`
 /// Where `start_bit` is the lowest significant bit to fetch
 ///
 /// ```zig
 /// const a: u8 = 0b01101100;
 /// const b = getBits(a, 2, 4);
-/// try testing.expectEqual(@as(u8,0b00001011), b);
+/// try testing.expectEqual(@as(u4,0b1011), b);
 /// ```
-pub fn getBits(target: anytype, comptime start_bit: comptime_int, comptime number_of_bits: comptime_int) @TypeOf(target) {
-    const target_type = @TypeOf(target);
-
+pub fn getBits(target: anytype, comptime start_bit: comptime_int, comptime number_of_bits: comptime_int) std.meta.Int(.unsigned, number_of_bits) {
+    const TargetType = @TypeOf(target);
+    const ReturnType = std.meta.Int(.unsigned, number_of_bits);
     const end_bit = start_bit + number_of_bits;
+    const MaskType = std.meta.Int(.unsigned, end_bit);
+
+    const mask: MaskType = comptime blk: {
+        var temp: MaskType = std.math.maxInt(MaskType);
+        temp <<= start_bit;
+        break :blk temp;
+    };
 
     comptime {
         if (number_of_bits == 0) @compileError("non-zero number_of_bits must be provided");
-        if (@typeInfo(target_type) != .Int and @typeInfo(target_type) != .ComptimeInt) @compileError("not an integer");
-        if (start_bit >= @bitSizeOf(target_type)) @compileError("start_bit index is out of bounds of the bit field");
-        if (end_bit > @bitSizeOf(target_type)) @compileError("start_bit + number_of_bits is out of bounds of the bit field");
+
+        if (@typeInfo(TargetType) == .Int) {
+            if (@typeInfo(TargetType).Int.signedness != .unsigned) @compileError("requires an unsigned integer, found " ++ @typeName(TargetType));
+            if (start_bit >= @bitSizeOf(TargetType)) @compileError("start_bit index is out of bounds of the bit field");
+            if (end_bit > @bitSizeOf(TargetType)) @compileError("start_bit + number_of_bits is out of bounds of the bit field");
+        } else if (@typeInfo(TargetType) == .ComptimeInt) {
+            if (target < 0) @compileError("requires an unsigned integer, found " ++ @typeName(TargetType));
+        } else {
+            @compileError("requires an unsigned integer, found " ++ @typeName(TargetType));
+        }
     }
 
-    // shift away high bits
-    const bits = target << (@bitSizeOf(target_type) - end_bit) >> (@bitSizeOf(target_type) - end_bit);
-
-    // shift away low bits
-    return bits >> start_bit;
+    return @truncate(ReturnType, (@truncate(MaskType, target) & mask) >> start_bit);
 }
 
 test "getBits" {
     const a: u8 = 0b01101100;
     const b = getBits(a, 2, 4);
-    try testing.expectEqual(@as(u8, 0b00001011), b);
+    try testing.expectEqual(@as(u4, 0b1011), b);
+}
+
+test "getBits - comptime_int" {
+    const a = 0b01101100;
+    const b = getBits(a, 2, 4);
+    try testing.expectEqual(@as(u4, 0b1011), b);
 }
 
 /// Sets the bit at the index `bit` to the value `value` (where true means a value of '1' and false means a value of '0')
@@ -114,17 +169,31 @@ pub fn setBit(target: anytype, comptime bit: comptime_int, value: bool) void {
         if (ptr_type_info != .Pointer) @compileError("not a pointer");
     }
 
-    const target_type = ptr_type_info.Pointer.child;
+    const TargetType = ptr_type_info.Pointer.child;
 
     comptime {
-        if (@typeInfo(target_type) != .Int and @typeInfo(target_type) != .ComptimeInt) @compileError("not an integer");
-        if (bit >= @bitSizeOf(target_type)) @compileError("bit index is out of bounds of the bit field");
+        if (@typeInfo(TargetType) == .Int) {
+            if (@typeInfo(TargetType).Int.signedness != .unsigned) @compileError("requires an unsigned integer, found " ++ @typeName(TargetType));
+            if (bit >= @bitSizeOf(TargetType)) @compileError("bit index is out of bounds of the bit field");
+        } else if (@typeInfo(TargetType) == .ComptimeInt) {
+            @compileError("comptime_int is unsupported");
+        } else {
+            @compileError("requires an unsigned integer, found " ++ @typeName(TargetType));
+        }
     }
 
+    const MaskType = std.meta.Int(.unsigned, bit + 1);
+
+    const mask: MaskType = comptime blk: {
+        var temp: MaskType = 1;
+        temp <<= bit;
+        break :blk temp;
+    };
+
     if (value) {
-        target.* |= @as(target_type, 1) << bit;
+        target.* |= mask;
     } else {
-        target.* &= ~(@as(target_type, 1) << bit);
+        target.* &= ~(mask);
     }
 }
 
@@ -155,23 +224,30 @@ pub fn setBits(target: anytype, comptime start_bit: comptime_int, comptime numbe
         if (ptr_type_info != .Pointer) @compileError("not a pointer");
     }
 
-    const target_type = ptr_type_info.Pointer.child;
+    const TargetType = ptr_type_info.Pointer.child;
     const end_bit = start_bit + number_of_bits;
 
     comptime {
-        if (@typeInfo(target_type) != .Int and @typeInfo(target_type) != .ComptimeInt) @compileError("not an integer");
         if (number_of_bits == 0) @compileError("non-zero number_of_bits must be provided");
-        if (start_bit >= @bitSizeOf(target_type)) @compileError("start_bit index is out of bounds of the bit field");
-        if (end_bit > @bitSizeOf(target_type)) @compileError("start_bit + number_of_bits is out of bounds of the bit field");
+
+        if (@typeInfo(TargetType) == .Int) {
+            if (@typeInfo(TargetType).Int.signedness != .unsigned) @compileError("requires an unsigned integer, found " ++ @typeName(TargetType));
+            if (start_bit >= @bitSizeOf(TargetType)) @compileError("start_bit index is out of bounds of the bit field");
+            if (end_bit > @bitSizeOf(TargetType)) @compileError("start_bit + number_of_bits is out of bounds of the bit field");
+        } else if (@typeInfo(TargetType) == .ComptimeInt) {
+            @compileError("comptime_int is unsupported");
+        } else {
+            @compileError("requires an unsigned integer, found " ++ @typeName(TargetType));
+        }
     }
 
-    const peer_value = @as(target_type, value);
+    const peer_value = @as(TargetType, value);
 
     if (getBits(peer_value, 0, (end_bit - start_bit)) != peer_value) {
         @panic("value exceeds bit range");
     }
 
-    const bitmask: target_type = comptime ~(~@as(target_type, 0) << (@bitSizeOf(target_type) - end_bit) >> (@bitSizeOf(target_type) - end_bit) >> start_bit << start_bit);
+    const bitmask: TargetType = comptime ~(~@as(TargetType, 0) << (@bitSizeOf(TargetType) - end_bit) >> (@bitSizeOf(TargetType) - end_bit) >> start_bit << start_bit);
 
     target.* = (target.* & bitmask) | (peer_value << start_bit);
 }
