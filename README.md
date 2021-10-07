@@ -23,7 +23,7 @@ The `Bitfield`, `Bit` & `Boolean` types are taken pretty much verbatim from [Flo
 
 ### Zigmod
 
-`gyro add leecannon/bitjuggle`
+`zigmod aq add 1/leecannon/bitjuggle`
 
 ### Git
 
