@@ -300,7 +300,7 @@ pub fn Bitfield(comptime FieldType: type, comptime shift_amount: usize, comptime
 
     const ValueType = std.meta.Int(.unsigned, num_bits);
 
-    return struct {
+    return extern struct {
         dummy: FieldType,
 
         const Self = @This();
@@ -346,7 +346,7 @@ test "bitfield" {
 pub fn Bit(comptime FieldType: type, comptime shift_amount: usize) type {
     const self_bit: FieldType = (1 << shift_amount);
 
-    return struct {
+    return extern struct {
         bits: Bitfield(FieldType, shift_amount, 1),
 
         const Self = @This();
@@ -403,7 +403,7 @@ test "bit" {
 pub fn Boolean(comptime FieldType: type, comptime shift_amount: usize) type {
     const self_bit: FieldType = (1 << shift_amount);
 
-    return struct {
+    return extern struct {
         bits: Bitfield(FieldType, shift_amount, 1),
 
         const Self = @This();
