@@ -170,7 +170,7 @@ test "getBits - comptime_int" {
 /// try testing.expect(getBit(val, 0));
 /// ```
 pub fn setBit(target: anytype, comptime bit: comptime_int, value: bool) void {
-    const ptr_type_info: std.builtin.TypeInfo = @typeInfo(@TypeOf(target));
+    const ptr_type_info: std.builtin.Type = @typeInfo(@TypeOf(target));
     comptime {
         if (ptr_type_info != .Pointer) @compileError("not a pointer");
     }
@@ -229,7 +229,7 @@ test "setBit" {
 /// ## Panics
 /// This method will panic if the `value` exceeds the bit range of the type of `target`
 pub fn setBits(target: anytype, comptime start_bit: comptime_int, comptime number_of_bits: comptime_int, value: anytype) void {
-    const ptr_type_info: std.builtin.TypeInfo = @typeInfo(@TypeOf(target));
+    const ptr_type_info: std.builtin.Type = @typeInfo(@TypeOf(target));
     comptime {
         if (ptr_type_info != .Pointer) @compileError("not a pointer");
     }
