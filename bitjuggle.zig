@@ -138,7 +138,7 @@ pub fn getBits(target: anytype, comptime start_bit: comptime_int, comptime numbe
             }
         } else if (@typeInfo(TargetType) == .ComptimeInt) {
             if (target < 0) {
-                @compileError("requires an unsigned integer, found " ++ @typeName(TargetType));
+                @compileError("requires an positive integer, found a negative");
             }
         } else {
             @compileError("requires an unsigned integer, found " ++ @typeName(TargetType));
@@ -216,8 +216,8 @@ test "setBit" {
     try testing.expect(!isBitSet(val, 0));
 }
 
-/// Sets the range of bits starting at `start_bit` upto and excluding `start_bit` + `number_of_bits`
-/// to be specific, if the range is N bits long, the N lower bits of `value` will be used; if any of
+/// Sets the range of bits starting at `start_bit` upto and excluding `start_bit` + `number_of_bits`.
+/// To be specific, if the range is N bits long, the N lower bits of `value` will be used; if any of
 /// the other bits in `value` are set to 1, this function will panic.
 ///
 /// ```zig
