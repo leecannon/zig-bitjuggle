@@ -343,7 +343,7 @@ test "bitfield" {
     try std.testing.expect(s.val == 0x69691337);
 }
 
-pub fn Bit(comptime FieldType: type, comptime shift_amount: usize) type {
+fn BitType(comptime FieldType: type, comptime shift_amount: usize, comptime ValueType: type) type {
     const self_bit: FieldType = (1 << shift_amount);
 
     return extern struct {
@@ -359,13 +359,13 @@ pub fn Bit(comptime FieldType: type, comptime shift_amount: usize) type {
             self.bits.field().* &= ~self_bit;
         }
 
-        pub fn read(self: Self) u1 {
-            return @truncate(u1, self.bits.field().* >> shift_amount);
+        pub fn read(self: Self) ValueType {
+            return @bitCast(ValueType, @truncate(u1, self.bits.field().* >> shift_amount));
         }
 
         // Since these are mostly used with MMIO, I want to avoid
         // reading the memory just to write it again, also races
-        pub fn write(self: *Self, val: u1) void {
+        pub fn write(self: *Self, val: ValueType) void {
             if (@bitCast(bool, val)) {
                 self.set();
             } else {
@@ -377,6 +377,14 @@ pub fn Bit(comptime FieldType: type, comptime shift_amount: usize) type {
             std.testing.refAllDecls(@This());
         }
     };
+}
+
+pub fn Bit(comptime FieldType: type, comptime shift_amount: usize) type {
+    return BitType(FieldType, shift_amount, u1);
+}
+
+pub fn Boolean(comptime FieldType: type, comptime shift_amount: usize) type {
+    return BitType(FieldType, shift_amount, bool);
 }
 
 test "bit" {
@@ -398,42 +406,6 @@ test "bit" {
     s.high.write(1);
 
     try std.testing.expect(s.val == 2);
-}
-
-pub fn Boolean(comptime FieldType: type, comptime shift_amount: usize) type {
-    const self_bit: FieldType = (1 << shift_amount);
-
-    return extern struct {
-        bits: Bitfield(FieldType, shift_amount, 1),
-
-        const Self = @This();
-
-        fn set(self: *Self) void {
-            self.bits.field().* |= self_bit;
-        }
-
-        fn unset(self: *Self) void {
-            self.bits.field().* &= ~self_bit;
-        }
-
-        pub fn read(self: Self) bool {
-            return @bitCast(bool, @truncate(u1, self.bits.field().* >> shift_amount));
-        }
-
-        // Since these are mostly used with MMIO, I want to avoid
-        // reading the memory just to write it again, also races
-        pub fn write(self: *Self, val: bool) void {
-            if (val) {
-                self.set();
-            } else {
-                self.unset();
-            }
-        }
-
-        comptime {
-            std.testing.refAllDecls(@This());
-        }
-    };
 }
 
 test "boolean" {
