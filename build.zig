@@ -1,11 +1,12 @@
 const std = @import("std");
-const Builder = std.build.Builder;
 
-pub fn build(b: *Builder) !void {
-    const mode = b.standardReleaseOptions();
+pub fn build(b: *std.Build) !void {
+    const optimize = b.standardOptimizeOption(.{});
 
-    var tests = b.addTest("bitjuggle.zig");
-    tests.setBuildMode(mode);
+    var tests = b.addTest(.{
+        .root_source_file = .{ .path = "bitjuggle.zig" },
+        .optimize = optimize,
+    });
 
     const tests_step = b.step("test", "Run library tests");
     tests_step.dependOn(&tests.step);
