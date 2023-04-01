@@ -14,14 +14,6 @@ const testing = std.testing;
 pub fn isBitSet(target: anytype, comptime bit: comptime_int) bool {
     const TargetType = @TypeOf(target);
 
-    const MaskType = std.meta.Int(.unsigned, bit + 1);
-
-    const mask: MaskType = comptime blk: {
-        var temp: MaskType = std.math.maxInt(MaskType);
-        temp <<= bit;
-        break :blk temp;
-    };
-
     comptime {
         if (@typeInfo(TargetType) == .Int) {
             if (@typeInfo(TargetType).Int.signedness != .unsigned) {
@@ -39,7 +31,14 @@ pub fn isBitSet(target: anytype, comptime bit: comptime_int) bool {
         }
     }
 
-    return @truncate(MaskType, target) & mask != 0;
+    const mask: TargetType = comptime blk: {
+        const MaskType = std.meta.Int(.unsigned, bit + 1);
+        var temp: MaskType = std.math.maxInt(MaskType);
+        temp <<= bit;
+        break :blk @as(TargetType, temp);
+    };
+
+    return (target & mask) != 0;
 }
 
 test "isBitSet" {
@@ -192,12 +191,11 @@ pub fn setBit(target: anytype, comptime bit: comptime_int, value: bool) void {
         }
     }
 
-    const MaskType = std.meta.Int(.unsigned, bit + 1);
-
-    const mask: MaskType = comptime blk: {
-        var temp: MaskType = 1;
+    const mask: TargetType = comptime blk: {
+        const MaskType = std.meta.Int(.unsigned, bit + 1);
+        var temp: MaskType = std.math.maxInt(MaskType);
         temp <<= bit;
-        break :blk temp;
+        break :blk @as(TargetType, temp);
     };
 
     if (value) {
