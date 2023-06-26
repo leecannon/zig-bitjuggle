@@ -120,7 +120,6 @@ test "getBit - comptime_int" {
 /// ```
 pub fn getBits(target: anytype, comptime start_bit: comptime_int, comptime number_of_bits: comptime_int) std.meta.Int(.unsigned, number_of_bits) {
     const TargetType = @TypeOf(target);
-    const ReturnType = std.meta.Int(.unsigned, number_of_bits);
 
     comptime {
         if (number_of_bits == 0) @compileError("non-zero number_of_bits must be provided");
@@ -144,7 +143,7 @@ pub fn getBits(target: anytype, comptime start_bit: comptime_int, comptime numbe
         }
     }
 
-    return @truncate(ReturnType, target >> start_bit);
+    return @truncate(target >> start_bit);
 }
 
 test "getBits" {
@@ -305,17 +304,17 @@ pub fn Bitfield(comptime FieldType: type, comptime shift_amount: usize, comptime
 
         // This function uses `anytype` inorder to support both const and non-const pointers
         inline fn field(self: anytype) PtrCastPreserveCV(Self, @TypeOf(self), FieldType) {
-            return @ptrCast(PtrCastPreserveCV(Self, @TypeOf(self), FieldType), self);
+            return @ptrCast(self);
         }
 
         pub fn write(self: *Self, val: ValueType) void {
             self.field().* &= ~self_mask;
-            self.field().* |= @intCast(FieldType, val) << shift_amount;
+            self.field().* |= @as(FieldType, @intCast(val)) << shift_amount;
         }
 
         pub fn read(self: Self) ValueType {
             const val: FieldType = self.field().*;
-            return @intCast(ValueType, (val & self_mask) >> shift_amount);
+            return @intCast((val & self_mask) >> shift_amount);
         }
     };
 }
@@ -358,13 +357,13 @@ fn BitType(comptime FieldType: type, comptime shift_amount: usize, comptime Valu
         }
 
         pub fn read(self: Self) ValueType {
-            return @bitCast(ValueType, @truncate(u1, self.bits.field().* >> shift_amount));
+            return @bitCast(@as(u1, @truncate(self.bits.field().* >> shift_amount)));
         }
 
         // Since these are mostly used with MMIO, I want to avoid
         // reading the memory just to write it again, also races
         pub fn write(self: *Self, val: ValueType) void {
-            if (@bitCast(bool, val)) {
+            if (@as(bool, @bitCast(val))) {
                 self.set();
             } else {
                 self.unset();

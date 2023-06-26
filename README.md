@@ -17,16 +17,6 @@ The `Bitfield`, `Bit` & `Boolean` types are taken pretty much verbatim from [Flo
 
 ## How to get
 
-### Gyro
-
-`gyro add leecannon/bitjuggle`
-
-### Zigmod
-
-`zigmod aq add 1/leecannon/bitjuggle`
-
-### Git
-
 #### Submodule
 
 `git submodule add https://github.com/leecannon/zig-bitjuggle zig-bitjuggle`
