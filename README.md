@@ -1,7 +1,5 @@
 # zig-bitjuggle
 
-[![CI](https://github.com/leecannon/zig-bitjuggle/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/leecannon/zig-bitjuggle/actions/workflows/main.yml)
-
 This package contains various "bit juggling" helpers and functionality:
 
 - `isBitSet` - Check if a bit is set
@@ -13,14 +11,17 @@ This package contains various "bit juggling" helpers and functionality:
 - `Bit` - Used along with `extern union` to represent bit fields
 - `Boolean` - Used along with `extern union` to represent boolean bit fields
 
-The `Bitfield`, `Bit` & `Boolean` types are taken pretty much verbatim from [Florence](https://github.com/FlorenceOS/Florence/blob/master/lib/util/bitfields.zig) (see LICENSE-FLORENCE for original license)
+## Installation
 
-## How to get
+Add the dependency to `build.zig.zon`:
 
-#### Submodule
+```sh
+zig fetch --save git+https://github.com/leecannon/zig-bitjuggle
+```
 
-`git submodule add https://github.com/leecannon/zig-bitjuggle zig-bitjuggle`
+Then add the following to `build.zig`:
 
-#### Clone
-
-`git clone https://github.com/leecannon/zig-bitjuggle`
+```zig
+const bitjuggle = b.dependency("bitjuggle", .{});
+exe.root_module.addImport("bitjuggle", bitjuggle.module("bitjuggle"));
+```
