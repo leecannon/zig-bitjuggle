@@ -2,11 +2,13 @@
 // SPDX-FileCopyrightText: 2025 Lee Cannon <leecannon@leecannon.xyz>
 
 .{
-    .name = "bitjuggle",
+    .name = .bitjuggle,
 
     .version = "1.0.12",
 
-    .minimum_zig_version = "0.14.0-dev.2989+bf6ee7cb3",
+    .minimum_zig_version = "0.14.0-dev.3445+6c3cbb0c8",
 
     .paths = .{""},
+
+    .fingerprint = 0xc4bb12c4ef549748,
 }
