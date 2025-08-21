@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2025 Lee Cannon <leecannon@leecannon.xyz>
+// SPDX-FileCopyrightText: Lee Cannon <leecannon@leecannon.xyz>
 
 /// Returns `true` if the the bit at index `bit` is set (equals 1).
 ///
@@ -91,31 +91,31 @@ test getBit {
     // comptime
     comptime {
         const a: comptime_int = 0b00000000;
-        try std.testing.expectEqual(@as(u1, 0), getBit(a, 0));
-        try std.testing.expectEqual(@as(u1, 0), getBit(a, 1));
+        try expectEqual(getBit(a, 0), 0);
+        try expectEqual(getBit(a, 1), 0);
 
         const b: comptime_int = 0b11111111;
-        try std.testing.expectEqual(@as(u1, 1), getBit(b, 0));
-        try std.testing.expectEqual(@as(u1, 1), getBit(b, 1));
+        try expectEqual(getBit(b, 0), 1);
+        try expectEqual(getBit(b, 1), 1);
 
         const c: comptime_int = 0b00000010;
-        try std.testing.expectEqual(@as(u1, 0), getBit(c, 0));
-        try std.testing.expectEqual(@as(u1, 1), getBit(c, 1));
+        try expectEqual(getBit(c, 0), 0);
+        try expectEqual(getBit(c, 1), 1);
     }
 
     // runtime
     {
         var value: u8 = 0b00000000;
-        try std.testing.expectEqual(@as(u1, 0), getBit(value, 0));
-        try std.testing.expectEqual(@as(u1, 0), getBit(value, 1));
+        try expectEqual(getBit(value, 0), 0);
+        try expectEqual(getBit(value, 1), 0);
 
         value = 0b11111111;
-        try std.testing.expectEqual(@as(u1, 1), getBit(value, 0));
-        try std.testing.expectEqual(@as(u1, 1), getBit(value, 1));
+        try expectEqual(getBit(value, 0), 1);
+        try expectEqual(getBit(value, 1), 1);
 
         value = 0b00000010;
-        try std.testing.expectEqual(@as(u1, 0), getBit(value, 0));
-        try std.testing.expectEqual(@as(u1, 1), getBit(value, 1));
+        try expectEqual(getBit(value, 0), 0);
+        try expectEqual(getBit(value, 1), 1);
     }
 }
 
@@ -165,21 +165,21 @@ test getBits {
     comptime {
         const a: comptime_int = 0b01101100;
         const b = getBits(a, 2, 4);
-        try std.testing.expectEqual(@as(u4, 0b1011), b);
+        try expectEqual(b, 0b1011);
     }
 
     // runtime
     {
         var value: u8 = 0b01101100;
-        try std.testing.expectEqual(
-            @as(u4, 0b1011),
+        try expectEqual(
             getBits(value, 2, 4),
+            0b1011,
         );
 
         value = 0b01101100;
-        try std.testing.expectEqual(
-            @as(u3, 0b100),
+        try expectEqual(
             getBits(value, 0, 3),
+            0b100,
         );
     }
 }
@@ -217,9 +217,11 @@ pub inline fn setBit(target: anytype, comptime bit: comptime_int, value: u1) voi
         }
     }
 
-    const mask = comptime ~(@as(TargetType, 1) << bit);
+    const one: TargetType = 1;
+    const mask: TargetType = comptime ~(one << bit);
+    const target_value: TargetType = value;
 
-    target.* = (target.* & mask) | (@as(TargetType, value) << bit);
+    target.* = (target.* & mask) | (target_value << bit);
 }
 
 test setBit {
@@ -284,7 +286,8 @@ pub fn setBits(
     }
 
     const bitmask: TargetType = comptime blk: {
-        var bitmask = ~@as(TargetType, 0);
+        const zero: TargetType = 0;
+        var bitmask = ~zero;
         bitmask <<= (@bitSizeOf(TargetType) - end_bit);
         bitmask >>= (@bitSizeOf(TargetType) - end_bit);
         bitmask >>= start_bit;
@@ -298,7 +301,7 @@ pub fn setBits(
 test setBits {
     var val: u8 = 0b10000000;
     setBits(&val, 2, 4, 0b00001101);
-    try std.testing.expectEqual(@as(u8, 0b10110100), val);
+    try expectEqual(val, 0b10110100);
 }
 
 /// Defines a bitfield.
@@ -314,43 +317,44 @@ pub fn Bitfield(
         @compileError("bitfield doesn't fit");
     }
 
-    const self_mask: FieldType = ((1 << num_bits) - 1) << shift_amount;
+    const mask: FieldType = ((1 << num_bits) - 1) << shift_amount;
 
     const ValueType: type = std.meta.Int(.unsigned, num_bits);
 
     return extern struct {
         dummy: FieldType,
 
-        const Self = @This();
+        const BitfieldT = @This();
 
-        pub fn write(self: *Self, val: ValueType) void {
-            self.writeNoShiftFullSize(@as(FieldType, val) << shift_amount);
+        pub fn write(bitfield: *BitfieldT, val: ValueType) void {
+            const field_val: FieldType = val;
+            bitfield.writeNoShiftFullSize(field_val << shift_amount);
         }
 
         /// Writes a value to the bitfield without shifting, all bits in `val` not in the bitfield are ignored.
         ///
         /// Not atomic.
-        pub fn writeNoShiftFullSize(self: *Self, val: FieldType) void {
-            self.field().* =
-                (self.field().* & ~self_mask) |
-                (val & self_mask);
+        pub fn writeNoShiftFullSize(bitfield: *BitfieldT, val: FieldType) void {
+            bitfield.field().* =
+                (bitfield.field().* & ~mask) |
+                (val & mask);
         }
 
-        pub fn read(self: Self) ValueType {
-            return @truncate(self.readNoShiftFullSize() >> shift_amount);
+        pub fn read(bitfield: BitfieldT) ValueType {
+            return @truncate(bitfield.readNoShiftFullSize() >> shift_amount);
         }
 
         /// Reads the full value of the bitfield without shifting and without truncating the type.
         ///
         /// All bits not in the bitfield will be zero.
-        pub inline fn readNoShiftFullSize(self: Self) FieldType {
-            return (self.field().* & self_mask);
+        pub inline fn readNoShiftFullSize(bitfield: BitfieldT) FieldType {
+            return (bitfield.field().* & mask);
         }
 
         /// A function to access the underlying integer as `FieldType`.
         /// Uses `anytype` to support both const and non-const access.
-        inline fn field(self: anytype) PtrCastPreserveCV(Self, @TypeOf(self), FieldType) {
-            return @ptrCast(self);
+        inline fn field(bitfield: anytype) PtrCastPreserveCV(BitfieldT, @TypeOf(bitfield), FieldType) {
+            return @ptrCast(bitfield);
         }
     };
 }
@@ -388,14 +392,14 @@ fn BitType(
     return extern struct {
         bits: Bitfield(FieldType, shift_amount, 1),
 
-        const Self = @This();
+        const BitTypeT = @This();
 
-        pub fn read(self: Self) ValueType {
-            return @bitCast(getBit(self.bits.field().*, shift_amount));
+        pub fn read(bit_type: BitTypeT) ValueType {
+            return @bitCast(getBit(bit_type.bits.field().*, shift_amount));
         }
 
-        pub fn write(self: *Self, val: ValueType) void {
-            setBit(self.bits.field(), shift_amount, @bitCast(val));
+        pub fn write(bit_type: *BitTypeT, val: ValueType) void {
+            setBit(bit_type.bits.field(), shift_amount, @bitCast(val));
         }
     };
 }
@@ -471,6 +475,10 @@ inline fn PtrCastPreserveCV(comptime T: type, comptime PtrToT: type, comptime Ne
         *const volatile T => *const volatile NewT,
         else => @compileError("invalid type " ++ @typeName(PtrToT) ++ " given to PtrCastPreserveCV"),
     };
+}
+
+pub inline fn expectEqual(actual: anytype, expected: @TypeOf(actual)) !void {
+    return std.testing.expectEqual(expected, actual);
 }
 
 comptime {

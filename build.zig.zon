@@ -4,9 +4,9 @@
 .{
     .name = .bitjuggle,
 
-    .version = "1.0.12",
+    .version = "2.0.0",
 
-    .minimum_zig_version = "0.14.0-dev.3445+6c3cbb0c8",
+    .minimum_zig_version = "0.15.1",
 
     .paths = .{""},
 
